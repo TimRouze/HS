@@ -16,11 +16,43 @@
 #include <unordered_map>
 #include <vector>
 #include <filesystem>
+#include <cmath>
+#include "include/Eigen/Dense"
 #include "HammingSubsampler.h"
 #include "utils.h"
-
 #include "include/zstr.hpp"
 
+Eigen::MatrixXd create_matrix(uint64_t& k){
+	Eigen::MatrixXd right_m(k, k);
+	Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
+	for(int i = 0; i < k; ++i){
+		Eigen::VectorXd curr_col = right_m.col(i);
+		int l(pow(2, i)-1), pos(0);
+		while(pos<k){
+			pos = l;
+			for(; l < pos+pow(2, i) and l < k; ++l){
+				curr_col(l) = 1;
+			}
+			l += pow(2,i);
+			right_m.col(i) = curr_col;
+		}
+	}
+	cout << right_m << endl;
+	cin.get();
+	cout << left_m << endl;
+	cin.get();
+	return left_m;
+}
+
+// MAT *m_fill( MAT *A, double x)
+// /* MAT *m_random_fill( MAT *A ) */
+// {
+//    int i, j;
+//    for ( i = 0; i < A->m; i++ ) for ( j = 0; j < A->n; j++ )
+//       { A->me[i][j] = x ; }
+//       /* { A->me[i][j] = m_random ; } */
+//    return A;
+// }
 
 string extract_name(const string& str){
     string result;
@@ -55,31 +87,28 @@ void parse_fasta(const string& input_file, const string& output_prefix, uint64_t
     }
     string clean_input_file=extract_name(input_file);
     string subsampled_file=output_prefix +clean_input_file+".gz";
-	zstr::ofstream* out_file_skmer = (new zstr::ofstream(subsampled_file,21,9));	
-	{
-		string ref, useless;
-		while (not input_stream->eof()) {
+	zstr::ofstream* out_file_skmer = (new zstr::ofstream(subsampled_file,21,9));
+	string ref, useless;
+	while (not input_stream->eof()) {
+		ref = "";
+		Biogetline(input_stream,ref,'A',k);
+		if (ref.size() < k) {
 			ref = "";
-			{
-                Biogetline(input_stream,ref,'A',k);
-				if (ref.size() < k) {
-					ref = "";
-				} else {
-					read_kmer += ref.size() - k + 1;
-				}
-			}
-			// FOREACH sequence
-			if (not ref.empty()) {
-				bool is_rev, old_rev;
-				uint64_t last_position(0);
-				kmer seq(str2num(ref.substr(0, k)));
-				uint64_t i(0);
-				// FOREACH KMER
-				for (; i + k < ref.size(); ++i) {
-					updateK(seq, ref[i + k], k);
-                    cout << num2str(seq, k) << endl;
-                    cin.get();
-				}
+		} else {
+			read_kmer += ref.size() - k + 1;
+		}
+
+		// FOREACH sequence
+		if (not ref.empty()) {
+			cout << ref << endl;
+			cin.get();
+			bool is_rev, old_rev;
+			uint64_t last_position(0);
+			kmer seq(str2num(ref.substr(0, k)));
+			uint64_t i(0);
+			// FOREACH KMER
+			for (; i + k < ref.size(); ++i) {
+				updateK(seq, ref[i + k], k);
 			}
 		}
 	}
@@ -88,7 +117,7 @@ void parse_fasta(const string& input_file, const string& output_prefix, uint64_t
 int main(int argc, char** argv) {
 	char ch;
 	string input, inputfof, query, output("hammed_");
-	uint64_t k(32);
+	uint64_t k(31);
 	uint c(8);
     bool verbose=true;
 
@@ -107,15 +136,15 @@ int main(int argc, char** argv) {
 		     << "	-i Input file" << endl
 			 << "	-f Input file of file" << endl
 			 << "	-o Output prefix (hammed)" << endl
-		     << "	-k Kmer size used  (32) " << endl
+		     << "	-k Kmer size used  (31) " << endl
              << "	-t Threads used  (8) " << endl
              << "	-v Verbose level (1) " << endl
              ;
 		return 0;
 	}else{
-        cout<<" I use k="<<k<<endl;
-        
+        cout<<" I use k="<<k<<endl;	
 		if(input != ""){
+			Eigen::MatrixXd parity_m = create_matrix(k);
 			parse_fasta(input, output, k);
 			if(verbose){
                 cout << "VERBOSE" << endl;
