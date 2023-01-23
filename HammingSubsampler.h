@@ -19,6 +19,15 @@
 
 using namespace std;
 
+
+struct logical_xor {
+  bool operator() (bool a, bool b) const
+  {
+    return a != b;
+  }
+};
+
+
 Eigen::MatrixXd create_matrix(uint64_t& k);
 void parse_fasta(const string& input_file, const string& output_prefix, uint64_t& k);
 string extract_name(const string& str);

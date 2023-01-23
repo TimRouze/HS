@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 
 
-
 kmer nuc2int(char c) {
 	return (c / 2) % 4;
 }
@@ -95,6 +94,25 @@ uint64_t unrevhash(uint64_t x) {
 	return x;
 }
 
+RowVectorXd str2vect(const string& str, uint64_t& k) {
+	Eigen::RowVectorXd res(k*2);
+	uint64_t j(0);
+	for (uint64_t i(0); i < str.size(); ++i) {
+		if (str[i] == 'G' or str[i] == 'T') {
+			res(j) = 1;
+		} else {
+			res(j) = 0;
+		}
+		if (str[i] == 'C' or str[i] == 'G') {
+			res(j+1) = 1;
+		} else {
+			res(j+1) = 0;
+		}
+		j += 2;
+	}
+	return res;
+}
+
 vector<bool> str2boolv(const string& str) {
 	vector<bool> res;
 	for (uint64_t i(0); i < str.size(); ++i) {
@@ -111,7 +129,6 @@ vector<bool> str2boolv(const string& str) {
 	}
 	return res;
 }
-
 
 
 string bool2strv(const vector<bool>& v) {

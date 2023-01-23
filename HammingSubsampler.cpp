@@ -27,21 +27,25 @@ Eigen::MatrixXd create_matrix(uint64_t& k){
 	Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
 	for(int i = 0; i < k; ++i){
 		Eigen::VectorXd curr_col = right_m.col(i);
-		int l(pow(2, i)-1), pos(0);
+		int pos(0), j(pow(2,i)-1);
 		while(pos<k){
-			pos = l;
-			for(; l < pos+pow(2, i) and l < k; ++l){
-				curr_col(l) = 1;
+			pos = j;
+			for(; j < pos+pow(2, i) and j < k; ++j){
+				curr_col(j) = 1;
 			}
-			l += pow(2,i);
-			right_m.col(i) = curr_col;
+			j += pow(2,i);
 		}
+		right_m.col(i) = curr_col;
 	}
 	cout << right_m << endl;
 	cin.get();
 	cout << left_m << endl;
 	cin.get();
-	return left_m;
+	Eigen::MatrixXd res(left_m.rows()+right_m.rows(), left_m.cols());
+	res << left_m, right_m;
+	cout << res << endl;
+	cin.get();
+	return res;
 }
 
 // MAT *m_fill( MAT *A, double x)
@@ -89,6 +93,8 @@ void parse_fasta(const string& input_file, const string& output_prefix, uint64_t
     string subsampled_file=output_prefix +clean_input_file+".gz";
 	zstr::ofstream* out_file_skmer = (new zstr::ofstream(subsampled_file,21,9));
 	string ref, useless;
+	Eigen::RowVectorXd kmer_vect(k*2), res(k*2);
+	Eigen::MatrixXd parity_m = create_matrix(k);
 	while (not input_stream->eof()) {
 		ref = "";
 		Biogetline(input_stream,ref,'A',k);
@@ -100,15 +106,16 @@ void parse_fasta(const string& input_file, const string& output_prefix, uint64_t
 
 		// FOREACH sequence
 		if (not ref.empty()) {
-			cout << ref << endl;
-			cin.get();
 			bool is_rev, old_rev;
 			uint64_t last_position(0);
-			kmer seq(str2num(ref.substr(0, k)));
 			uint64_t i(0);
 			// FOREACH KMER
 			for (; i + k < ref.size(); ++i) {
-				updateK(seq, ref[i + k], k);
+				kmer_vect = str2vect(ref.substr(i,k), k);
+				res = kmer_vect * parity_m;
+				//res = (parity_m.colwise() * kmer_vect).colwise().redux(logical_xor());
+				cout << res << endl;
+				cin.get();
 			}
 		}
 	}
@@ -144,7 +151,6 @@ int main(int argc, char** argv) {
 	}else{
         cout<<" I use k="<<k<<endl;	
 		if(input != ""){
-			Eigen::MatrixXd parity_m = create_matrix(k);
 			parse_fasta(input, output, k);
 			if(verbose){
                 cout << "VERBOSE" << endl;

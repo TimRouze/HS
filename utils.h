@@ -17,12 +17,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "include/zstr.hpp"
+#include "include/Eigen/Dense"
 
 #define kmer uint64_t
 
 
 using namespace std;
-
+using Eigen::RowVectorXd;
 
 uint64_t canonize(uint64_t x, uint64_t n);
 uint64_t rcbc(uint64_t in, uint64_t n);
@@ -38,6 +39,7 @@ uint64_t unrevhash(uint64_t x);
 char revCompChar(char c);
 string revComp(const string& s);
 vector<bool> str2boolv(const string& str);
+RowVectorXd str2vect(const string& str, uint64_t& k);
 string bool2strv(const vector<bool>& v);
 zstr::ifstream* openFile(const string& input_file);
 void Biogetline(zstr::ifstream* in,string& result,char type,uint K);
