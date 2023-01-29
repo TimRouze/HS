@@ -14,18 +14,12 @@
 #include <unordered_map>
 #include <pthread.h>
 #include <filesystem>
+#include "include/Eigen/Dense"
 #include "utils.h"
 
 
 using namespace std;
-
-
-struct logical_xor {
-  bool operator() (bool a, bool b) const
-  {
-    return a != b;
-  }
-};
+using namespace Eigen;
 
 
 Eigen::MatrixXd create_matrix(uint64_t& k);

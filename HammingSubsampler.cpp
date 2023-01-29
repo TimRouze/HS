@@ -17,34 +17,86 @@
 #include <vector>
 #include <filesystem>
 #include <cmath>
+#include <bits/stdc++.h>
 #include "include/Eigen/Dense"
 #include "HammingSubsampler.h"
 #include "utils.h"
 #include "include/zstr.hpp"
 
+// Eigen::MatrixXd create_matrix(uint64_t& k){
+// 	Eigen::MatrixXd right_m(k, k);
+// 	Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
+// 	uint64_t cpt(0);
+// 	for(int i = 0; i < k; ++i){
+// 		Eigen::VectorXd curr_col = right_m.col(i);
+// 		int pos(0), j(pow(2,i)-1);
+// 		while(pos<k){
+// 			pos = j;
+// 			for(; j < pos+pow(2, i) and j < k; ++j){
+// 				curr_col(j) = 1;
+// 			}
+// 			j += pow(2,i);
+// 		}
+// 		right_m.col(i) = curr_col;
+// 	}
+// 	cout << right_m << endl;
+// 	cin.get();
+// 	cout << left_m << endl;
+// 	cin.get();
+// 	Eigen::MatrixXd res(left_m.rows()+right_m.rows(), left_m.cols());
+// 	res << left_m, right_m;
+// 	cout << res << endl;
+// 	cin.get();
+// 	return res;
+// }
+
+Eigen::MatrixXd vectorizeStrings(int arr[], uint64_t& k)
+{
+    int sum = 0;
+    Eigen::MatrixXd vector(1, k);
+    for (int i = 0; i < k; i++) {
+        sum += arr[i];
+    }
+    if (sum != 0 and sum != 1) {
+        for (int i = 0; i < k; i++) {
+            vector(i) = arr[i];
+        }
+    }
+	return vector;
+}
+ 
+void generateControlMatrix(uint64_t& k, int arr[], int i, Eigen::MatrixXd &mat)
+{
+    //Eigen::MatrixXd controlMatrix;
+	// DOES NOT WORK
+    if (i == k) {
+        Eigen::MatrixXd vec = vectorizeStrings(arr, k);
+		Eigen::MatrixXd tmp(mat.rows()+vec.rows(), mat.cols());
+		tmp << mat, vec;
+		mat = tmp;
+        return;
+    }
+    arr[i] = 0;
+    generateControlMatrix(k, arr, i + 1, mat);
+    arr[i] = 1;
+    generateControlMatrix(k, arr, i + 1, mat);
+}
+
 Eigen::MatrixXd create_matrix(uint64_t& k){
-	Eigen::MatrixXd right_m(k, k);
-	Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
-	for(int i = 0; i < k; ++i){
-		Eigen::VectorXd curr_col = right_m.col(i);
-		int pos(0), j(pow(2,i)-1);
-		while(pos<k){
-			pos = j;
-			for(; j < pos+pow(2, i) and j < k; ++j){
-				curr_col(j) = 1;
-			}
-			j += pow(2,i);
-		}
-		right_m.col(i) = curr_col;
-	}
-	cout << right_m << endl;
-	cin.get();
-	cout << left_m << endl;
-	cin.get();
-	Eigen::MatrixXd res(left_m.rows()+right_m.rows(), left_m.cols());
-	res << left_m, right_m;
-	cout << res << endl;
-	cin.get();
+    int myarr[k];
+	Eigen::MatrixXd parity_m(1, k);
+    generateControlMatrix(k, myarr, 0, parity_m);
+	cout << parity_m << endl;
+    //Eigen::MatrixXd right_m = generateControlMatrix(k, myarr, 0);
+    //Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
+    //Eigen::MatrixXd res(left_m.rows()+right_m.rows(), left_m.cols());
+    //res << left_m, right_m;
+    //cout << res << endl;
+    //cin.get();
+    //return res;
+	Eigen::MatrixXd id_m = Eigen::MatrixXd::Identity(k, k);
+	Eigen::MatrixXd res(id_m.rows()+parity_m.rows(), id_m.cols());
+ 	res = id_m, parity_m;
 	return res;
 }
 
@@ -57,6 +109,15 @@ Eigen::MatrixXd create_matrix(uint64_t& k){
 //       /* { A->me[i][j] = m_random ; } */
 //    return A;
 // }
+
+uint64_t findInMat(Eigen::RowVectorXd& res, Eigen::MatrixXd& parity_m){
+	for(int i = 0; i < parity_m.rows(); ++i){
+  		if(parity_m.row(i) == res){
+			return i;
+		}
+	}
+	return -1;
+}
 
 string extract_name(const string& str){
     string result;
@@ -93,7 +154,8 @@ void parse_fasta(const string& input_file, const string& output_prefix, uint64_t
     string subsampled_file=output_prefix +clean_input_file+".gz";
 	zstr::ofstream* out_file_skmer = (new zstr::ofstream(subsampled_file,21,9));
 	string ref, useless;
-	Eigen::RowVectorXd kmer_vect(k*2), res(k*2);
+	map<string,uint64_t> sketch;
+	Eigen::RowVectorXd kmer_vect(k*2), res(k*2), hamming(k);
 	Eigen::MatrixXd parity_m = create_matrix(k);
 	while (not input_stream->eof()) {
 		ref = "";
@@ -112,9 +174,34 @@ void parse_fasta(const string& input_file, const string& output_prefix, uint64_t
 			// FOREACH KMER
 			for (; i + k < ref.size(); ++i) {
 				kmer_vect = str2vect(ref.substr(i,k), k);
-				res = kmer_vect * parity_m;
-				//res = (parity_m.colwise() * kmer_vect).colwise().redux(logical_xor());
+				cout << parity_m << endl;
+				cout << kmer_vect << endl;
+				res = (kmer_vect * parity_m).unaryExpr([](int x){return (double)(x%2);});
 				cout << res << endl;
+				if(res == hamming){
+					//STORE K-MER & INCREMENTE COMPTEUR
+					cout << "mot de hamming" << endl;
+					sketch[ref.substr(i,k)]++;
+					
+				}else{
+					// FINDINMAT DEVRAIT RETOURNER LA POS DANS LA MATRICE OU RENVOYER -1 SINON
+					uint64_t pos = findInMat(res, parity_m);
+					if(pos != -1){
+						// SWITCH LE BIT A LA POS DE L'ERREUR
+						// STORE K-MER & INCREMENTE COMPTEUR
+						cout << "found" << endl;
+						res(pos) = (double)((int)(res(pos)+1)%2);
+						sketch[ref.substr(i, k)]++;						
+					}
+					else{
+						cout << "not found" << endl;
+						// CHECK SI 2 ERREURS
+						// SI 2 ERREURS
+							// SWITCH LES BITS
+							// STORE K-MER & INCREMENTE COMPTEUR
+						// SINON SKIP
+					}
+				}
 				cin.get();
 			}
 		}
