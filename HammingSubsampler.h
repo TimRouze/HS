@@ -21,9 +21,26 @@
 using namespace std;
 using namespace Eigen;
 
+class Hammer {
+  public:
+  //CONSTANTS
+  	uint64_t k, r, cpt;
+    //VARIABLES
+    Eigen::MatrixXd parity_m;
+    Hammer(uint64_t ir){
+        r=ir;
+        uint64_t size = pow(2,r);
+        k = pow(2, r) - 1;
+        Eigen::MatrixXd tmp(size, r+1);
+        parity_m = tmp;
+        cpt = 0;
+    }
 
-Eigen::MatrixXd create_matrix(uint64_t& k);
-void parse_fasta(const string& input_file, const string& output_prefix, uint64_t& k);
-string extract_name(const string& str);
+    uint64_t findInMat(Eigen::RowVectorXd& res);
+    void create_matrix();
+    void generateControlMatrix(Eigen::RowVectorXd vec, int i);
+    void parse_fasta(const string& input_file, const string& output_prefix);
+    string extract_name(const string& str);
+};
 
 #endif
