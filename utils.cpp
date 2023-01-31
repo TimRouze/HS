@@ -113,6 +113,26 @@ RowVectorXd str2vect(const string& str, uint64_t& k) {
 	return res;
 }
 
+string vect2strv(const RowVectorXd& v) {
+	string res;
+	for (uint64_t i(0); i < v.size(); i += 2) {
+		if (v(i)) {
+			if (v(i + 1)) {
+				res += 'G';
+			} else {
+				res += 'T';
+			}
+		} else {
+			if (v(i + 1)) {
+				res += 'C';
+			} else {
+				res += 'A';
+			}
+		}
+	}
+	return res;
+}
+
 vector<bool> str2boolv(const string& str) {
 	vector<bool> res;
 	for (uint64_t i(0); i < str.size(); ++i) {

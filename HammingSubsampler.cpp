@@ -22,65 +22,14 @@
 #include "HammingSubsampler.h"
 #include "utils.h"
 #include "include/zstr.hpp"
-
-// Eigen::MatrixXd create_matrix(uint64_t& k){
-// 	Eigen::MatrixXd right_m(k, k);
-// 	Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
-// 	uint64_t cpt(0);
-// 	for(int i = 0; i < k; ++i){
-// 		Eigen::VectorXd curr_col = right_m.col(i);
-// 		int pos(0), j(pow(2,i)-1);
-// 		while(pos<k){
-// 			pos = j;
-// 			for(; j < pos+pow(2, i) and j < k; ++j){
-// 				curr_col(j) = 1;
-// 			}
-// 			j += pow(2,i);
-// 		}
-// 		right_m.col(i) = curr_col;
-// 	}
-// 	cout << right_m << endl;
-// 	cin.get();
-// 	cout << left_m << endl;
-// 	cin.get();
-// 	Eigen::MatrixXd res(left_m.rows()+right_m.rows(), left_m.cols());
-// 	res << left_m, right_m;
-// 	cout << res << endl;
-// 	cin.get();
-// 	return res;
-// }
-
-// Eigen::MatrixXd vectorizeStrings(int arr[], uint64_t& k)
-// {
-//     int sum = 0;
-//     Eigen::MatrixXd vector(1, k);
-//     for (int i = 0; i < k; i++) {
-//         sum += arr[i];
-//     }
-//     if (sum != 0 and sum != 1) {
-//         for (int i = 0; i < k; i++) {
-//             vector(i) = arr[i];
-// 			cout << arr[i];
-//         }
-//     }
-// 	cout << endl;
-// 	cout << vector << endl;
-// 	return vector;
-// }
  
 void Hammer::generateControlMatrix(Eigen::RowVectorXd vec, int i){
     if (i == r) {
 		Eigen::RowVectorXd curr_row = parity_m.row(cpt);
-		cout <<"LA SOMME: " <<  vec.sum() << endl;
 		if(vec.sum() != 0 and vec.sum() != 1){
-			cout << cpt << endl;
-			cout << vec << endl;
-			cout << parity_m.row(cpt) << endl;
 			for(int j = 0; j < vec.size(); ++j){
 				curr_row(j) = vec(j);
 			}
-			cout << parity_m(cpt) << endl;
-			cin.get();
 			parity_m.row(cpt) = curr_row;
 			++cpt;
 		}
@@ -94,28 +43,23 @@ void Hammer::generateControlMatrix(Eigen::RowVectorXd vec, int i){
 
 void Hammer::create_matrix(){
     Eigen::RowVectorXd vec(r);
-	uint64_t size = pow(2, r)-(r+1);
+	uint64_t size = pow(2, r);
+	uint64_t size_tmp = pow(2, r) - (r+1);
+	uint64_t sum(0);
     generateControlMatrix(vec, 0);
-	cout << parity_m << endl;
-    //Eigen::MatrixXd right_m = generateControlMatrix(k, myarr, 0);
-    //Eigen::MatrixXd left_m = Eigen::MatrixXd::Identity(k, k);
-    //Eigen::MatrixXd res(left_m.rows()+right_m.rows(), left_m.cols());
-    //res << left_m, right_m;
-    //cout << res << endl;
-    //cin.get();
-    //return res;
-	Eigen::MatrixXd id_m = Eigen::MatrixXd::Identity(r+1, r+1);
-}
+	for(auto row: parity_m.rowwise()){
+		sum = row.sum();
+		if(sum%2 == 0){
+			row(r) = 1;
+		}
+	}
+    Eigen::MatrixXd id_m = Eigen::MatrixXd::Identity(r+1, r+1);
+	Eigen::MatrixXd tmp(size_tmp, r+1);
+	tmp = parity_m;
+	parity_m.resize(size, r+1);
+	parity_m << tmp, id_m;
 
-// MAT *m_fill( MAT *A, double x)
-// /* MAT *m_random_fill( MAT *A ) */
-// {
-//    int i, j;
-//    for ( i = 0; i < A->m; i++ ) for ( j = 0; j < A->n; j++ )
-//       { A->me[i][j] = x ; }
-//       /* { A->me[i][j] = m_random ; } */
-//    return A;
-// }
+}
 
 uint64_t Hammer::findInMat(Eigen::RowVectorXd& res){
 	for(int i = 0; i < parity_m.rows(); ++i){
@@ -162,7 +106,7 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 	zstr::ofstream* out_file_skmer = (new zstr::ofstream(subsampled_file,21,9));
 	string ref, useless;
 	map<string,uint64_t> sketch;
-	Eigen::RowVectorXd kmer_vect(k*2), res(k*2), hamming(k);
+	Eigen::RowVectorXd kmer_vect(k*2), res(r+1), hamming(r+1);
 	create_matrix();
 	while (not input_stream->eof()) {
 		ref = "";
@@ -181,29 +125,26 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 			// FOREACH KMER
 			for (; i + k < ref.size(); ++i) {
 				kmer_vect = str2vect(ref.substr(i,k), k);
-				cout << parity_m << endl;
-				cout << kmer_vect << endl;
 				res = (kmer_vect * parity_m).unaryExpr([](int x){return (double)(x%2);});
-				cout << res << endl;
 				if(res == hamming){
 					//STORE K-MER & INCREMENTE COMPTEUR
 					cout << "mot de hamming" << endl;
 					sketch[ref.substr(i,k)]++;
 					
 				}else{
-					// FINDINMAT DEVRAIT RETOURNER LA POS DANS LA MATRICE OU RENVOYER -1 SINON
+					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
 					uint64_t pos = findInMat(res);
 					if(pos != -1){
 						// SWITCH LE BIT A LA POS DE L'ERREUR
 						// STORE K-MER & INCREMENTE COMPTEUR
-						cout << "found" << endl;
-						res(pos) = (double)((int)(res(pos)+1)%2);
-						sketch[ref.substr(i, k)]++;						
+						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
+						sketch[vect2strv(kmer_vect)]++;						
 					}
 					else{
 						cout << "not found" << endl;
 						// CHECK SI 2 ERREURS
 						// SI 2 ERREURS
+							// POUR CHECK 
 							// SWITCH LES BITS
 							// STORE K-MER & INCREMENTE COMPTEUR
 						// SINON SKIP
@@ -244,7 +185,7 @@ int main(int argc, char** argv) {
              ;
 		return 0;
 	}else{
-        cout<<" I use r="<<r<<" which means k=" << pow(2,r)-1<<endl;	
+        cout<<" I use r="<<r<<" which means k=" << (pow(2,r))/2<<endl;	
 		if(input != ""){
 			Hammer h = Hammer(r);
 			h.parse_fasta(input, output);

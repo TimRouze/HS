@@ -40,6 +40,7 @@ char revCompChar(char c);
 string revComp(const string& s);
 vector<bool> str2boolv(const string& str);
 RowVectorXd str2vect(const string& str, uint64_t& k);
+string vect2strv(const RowVectorXd& v);
 string bool2strv(const vector<bool>& v);
 zstr::ifstream* openFile(const string& input_file);
 void Biogetline(zstr::ifstream* in,string& result,char type,uint K);

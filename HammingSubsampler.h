@@ -29,8 +29,8 @@ class Hammer {
     Eigen::MatrixXd parity_m;
     Hammer(uint64_t ir){
         r=ir;
-        uint64_t size = pow(2,r);
-        k = pow(2, r) - 1;
+        uint64_t size = pow(2,r)-(r+1);
+        k = pow(2, r)/2;
         Eigen::MatrixXd tmp(size, r+1);
         parity_m = tmp;
         cpt = 0;
