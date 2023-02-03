@@ -103,7 +103,7 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
     }
     string clean_input_file=extract_name(input_file);
     string subsampled_file=output_prefix +clean_input_file+".gz";
-	zstr::ofstream* out_file_skmer = (new zstr::ofstream(subsampled_file,21,9));
+	zstr::ofstream* out_file = (new zstr::ofstream(subsampled_file,21,9));
 	string ref, useless;
 	map<string,uint64_t> sketch;
 	Eigen::RowVectorXd kmer_vect(k*2), res(r+1), hamming(r+1);
@@ -125,12 +125,14 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 			// FOREACH KMER
 			for (; i + k < ref.size(); ++i) {
 				kmer_vect = str2vect(ref.substr(i,k), k);
+				nb_kmer_seen++;
 				res = (kmer_vect * parity_m).unaryExpr([](int x){return (double)(x%2);});
 				if(res == hamming){
 					//STORE K-MER & INCREMENTE COMPTEUR
-					cout << "mot de hamming" << endl;
+					//cout << "mot de hamming" << endl;
 					sketch[ref.substr(i,k)]++;
-					
+					nb_hamming++;
+					nb_kmer_saved++;
 				}else{
 					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
 					uint64_t pos = findInMat(res);
@@ -138,10 +140,14 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 						// SWITCH LE BIT A LA POS DE L'ERREUR
 						// STORE K-MER & INCREMENTE COMPTEUR
 						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
-						sketch[vect2strv(kmer_vect)]++;						
+						sketch[vect2strv(kmer_vect)]++;
+						nb_kmer_saved++;
+						if(sketch[vect2strv(kmer_vect)] == 1){
+							nb_hamming++;
+						}				
 					}
 					else{
-						cout << "not found" << endl;
+						//cout << "not found" << endl;
 						// CHECK SI 2 ERREURS
 						// SI 2 ERREURS
 							// POUR CHECK 
@@ -150,10 +156,18 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 						// SINON SKIP
 					}
 				}
-				cin.get();
 			}
 		}
 	}
+	string line_1 = "";
+	for(auto const& [h_word, nb]: sketch){
+		line_1 = ">" + intToString(nb) + "\n";
+		out_file->write(line_1.c_str(), line_1.size());
+		out_file->write(h_word.c_str(), h_word.size());
+		out_file->write("\n", 1);
+	}
+	delete input_stream;
+	delete out_file;
 }
 
 int main(int argc, char** argv) {
@@ -163,7 +177,7 @@ int main(int argc, char** argv) {
 	uint c(8);
     bool verbose=true;
 
-	while ((ch = getopt(argc, argv, "hdag:q:k:m:n:s:t:b:e:f:i:o:v:")) != -1) {
+	while ((ch = getopt(argc, argv, "hdag:q:k:r:m:n:s:t:b:e:f:i:o:v:")) != -1) {
 		switch (ch) {
 			case 'i': input = optarg; break;
 			case 'f': inputfof = optarg; break;
@@ -190,7 +204,9 @@ int main(int argc, char** argv) {
 			Hammer h = Hammer(r);
 			h.parse_fasta(input, output);
 			if(verbose){
-                cout << "VERBOSE" << endl;
+				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers and I saved " << intToString(h.nb_kmer_saved) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
+				cout << "This means " << (double)h.nb_kmer_saved/h.nb_hamming << " k-mer per Hamming words in average" << endl;
+				cout << "This means a subsampling rate of " << (double)h.nb_kmer_seen/h.nb_kmer_saved << " Or " << (double)h.nb_kmer_seen/h.nb_hamming << endl;
             }
 		}
         

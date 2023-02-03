@@ -24,11 +24,14 @@ using namespace Eigen;
 class Hammer {
   public:
   //CONSTANTS
-  	uint64_t k, r, cpt;
+  	uint64_t k, r, cpt, nb_kmer_seen, nb_kmer_saved, nb_hamming;
     //VARIABLES
     Eigen::MatrixXd parity_m;
     Hammer(uint64_t ir){
         r=ir;
+        nb_kmer_seen = 0;
+        nb_kmer_saved = 0;
+        nb_hamming = 0;
         uint64_t size = pow(2,r)-(r+1);
         k = pow(2, r)/2;
         Eigen::MatrixXd tmp(size, r+1);
