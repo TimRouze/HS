@@ -88,7 +88,8 @@ string Hammer::extract_name(const string& str){
     return result;
 }
 
-void Hammer::parse_fasta(const string& input_file, const string& output_prefix) {
+void Hammer::parse_fasta(const string& input_file, const string& output_prefix, const char* file_type) {
+	cout << file_type << endl;
     uint64_t total_kmer_number(0), selected_kmer_number(0);
     uint64_t read_kmer(0);
 	string tmp;
@@ -102,15 +103,36 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
         return;
     }
     string clean_input_file=extract_name(input_file);
-    string subsampled_file=output_prefix +clean_input_file+".gz";
-	zstr::ofstream* out_file = (new zstr::ofstream(subsampled_file,21,9));
+    hammed_file=output_prefix +clean_input_file+".gz";
+	zstr::ofstream* out_file = (new zstr::ofstream(hammed_file,21,9));
 	string ref, useless;
-	map<string,uint64_t> sketch;
+	unordered_map<string,uint64_t> sketch;
 	Eigen::RowVectorXd kmer_vect(k*2), res(r+1), hamming(r+1);
 	create_matrix();
+	map<std::vector<int>, pair<uint64_t, uint64_t>> combinations;
+	// int po = 0;
+	for (uint64_t i = 0; i < cpt+r ; ++i){
+		for (uint64_t j = i+1; j < cpt+r+1; ++j){
+				std::vector<int> res;
+			for (uint64_t l = 0; l < parity_m.row(i).size(); ++l){
+				res.push_back((int)(parity_m.row(i)(l)+ parity_m.row(j)(l))%2);
+			}
+			// po++;
+			if (combinations.find(res) == combinations.end()){
+				pair<uint64_t, uint64_t> pos;
+				pos.first = i;
+				pos.second = j;
+				combinations[res] = pos;
+			}
+		}
+	}
+	cout << "Matrix creation done. Starting computations..." << endl;
+//cout << parity_m << endl;
+// cout << po << endl;
+// cout << combinations.size() << endl;
 	while (not input_stream->eof()) {
 		ref = "";
-		Biogetline(input_stream,ref,'A',k);
+		Biogetline(input_stream,ref,*file_type,k);
 		if (ref.size() < k) {
 			ref = "";
 		} else {
@@ -131,7 +153,9 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 					//STORE K-MER & INCREMENTE COMPTEUR
 					//cout << "mot de hamming" << endl;
 					sketch[ref.substr(i,k)]++;
-					nb_hamming++;
+					if(sketch[vect2strv(kmer_vect)] == 1){
+						nb_hamming++;
+					}
 					nb_kmer_saved++;
 				}else{
 					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
@@ -154,11 +178,31 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 							// SWITCH LES BITS
 							// STORE K-MER & INCREMENTE COMPTEUR
 						// SINON SKIP
+						std::vector<int> result;
+                        for (uint64_t l = 0; l < res.size(); ++l){
+                            int vect = res(l);
+                            //cout << vect;
+                            result.push_back(vect);
+                        }
+                        //cout << endl;
+                        if (combinations.find(result) != combinations.end()){
+                            pair<uint64_t, uint64_t> pos = combinations[result];
+                            kmer_vect(pos.first) = (double)(((int)kmer_vect(pos.first)+1)%2);
+                            kmer_vect(pos.second) = (double)(((int)kmer_vect(pos.second)+1)%2);
+                            sketch[vect2strv(kmer_vect)]++;
+                            nb_kmer_saved++;
+                            if(sketch[vect2strv(kmer_vect)] == 1){
+                                nb_hamming++;
+                            }
+                            //cout << pos.first << " " << pos.second << endl;
+                            //cin.get();
+                        }
 					}
 				}
 			}
 		}
 	}
+	cout << "Writing output..." << endl;
 	string line_1 = "";
 	for(auto const& [h_word, nb]: sketch){
 		line_1 = ">" + intToString(nb) + "\n";
@@ -171,21 +215,22 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix) 
 }
 
 int main(int argc, char** argv) {
-	char ch;
+char ch, *file_type = new char('A');
 	string input, inputfof, query, output("hammed_");
 	uint64_t k(31), r(5);
 	uint c(8);
     bool verbose=true;
 
-	while ((ch = getopt(argc, argv, "hdag:q:k:r:m:n:s:t:b:e:f:i:o:v:")) != -1) {
+	while ((ch = getopt(argc, argv, "hdag:q:k:r:m:n:s:t:b:e:f:i:o:v:t:")) != -1) {
 		switch (ch) {
 			case 'i': input = optarg; break;
 			case 'f': inputfof = optarg; break;
 			case 'r': r = stoi(optarg); break;
 			case 'k': k = stoi(optarg); break;
-			case 't': c = stoi(optarg); break;
+			case 'c': c = stoi(optarg); break;
 			case 'o': output = optarg; break;
             case 'v': verbose = stoi(optarg); break;
+			case 't': file_type = optarg; break;
 		}
 	}
 	if ((input == "" && inputfof == "")) {
@@ -193,6 +238,7 @@ int main(int argc, char** argv) {
 		     << "	-i Input file" << endl
 			 << "	-f Input file of file" << endl
 			 << "	-o Output prefix (hammed)" << endl
+			 << "	-t File type (A for fasta, Q for fastq)" << endl
 		     << "	-k Kmer size used  (31) " << endl
              << "	-t Threads used  (8) " << endl
              << "	-v Verbose level (1) " << endl
@@ -202,11 +248,13 @@ int main(int argc, char** argv) {
         cout<<" I use r="<<r<<" which means k=" << (pow(2,r))/2<<endl;	
 		if(input != ""){
 			Hammer h = Hammer(r);
-			h.parse_fasta(input, output);
+			h.parse_fasta(input, output, file_type);
 			if(verbose){
 				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers and I saved " << intToString(h.nb_kmer_saved) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
 				cout << "This means " << (double)h.nb_kmer_saved/h.nb_hamming << " k-mer per Hamming words in average" << endl;
-				cout << "This means a subsampling rate of " << (double)h.nb_kmer_seen/h.nb_kmer_saved << " Or " << (double)h.nb_kmer_seen/h.nb_hamming << endl;
+				cout << "This means a subsampling rate of " << (double)h.nb_kmer_seen/h.nb_kmer_saved << " Or " << (double)h.nb_kmer_seen/h.nb_hamming << " k-mers per hamming word." << endl;
+				cout << "Output file is " << intToString(std::filesystem::file_size(h.hammed_file)/1000) << "KB" << endl;
+				cout << "Input file is " << intToString(std::filesystem::file_size(input)/1000) << "KB" << endl;
             }
 		}
         

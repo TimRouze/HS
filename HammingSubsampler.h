@@ -26,6 +26,7 @@ class Hammer {
   //CONSTANTS
   	uint64_t k, r, cpt, nb_kmer_seen, nb_kmer_saved, nb_hamming;
     //VARIABLES
+    string hammed_file;
     Eigen::MatrixXd parity_m;
     Hammer(uint64_t ir){
         r=ir;
@@ -36,13 +37,14 @@ class Hammer {
         k = pow(2, r)/2;
         Eigen::MatrixXd tmp(size, r+1);
         parity_m = tmp;
+        hammed_file = "";
         cpt = 0;
     }
 
     uint64_t findInMat(Eigen::RowVectorXd& res);
     void create_matrix();
     void generateControlMatrix(Eigen::RowVectorXd vec, int i);
-    void parse_fasta(const string& input_file, const string& output_prefix);
+    void parse_fasta(const string& input_file, const string& output_prefix, const char* file_type);
     string extract_name(const string& str);
 };
 
