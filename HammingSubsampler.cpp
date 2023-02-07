@@ -105,11 +105,11 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
     string clean_input_file=extract_name(input_file);
     hammed_file=output_prefix +clean_input_file+".gz";
 	zstr::ofstream* out_file = (new zstr::ofstream(hammed_file,21,9));
-	string ref, useless;
+	string ref, useless, curr_kmer;
 	unordered_map<string,uint64_t> sketch;
 	Eigen::RowVectorXd kmer_vect(k*2), res(r+1), hamming(r+1);
 	create_matrix();
-	map<std::vector<int>, pair<uint64_t, uint64_t>> combinations;
+	map<vector<int>, pair<uint64_t, uint64_t>> combinations;
 	// int po = 0;
 	for (uint64_t i = 0; i < cpt+r ; ++i){
 		for (uint64_t j = i+1; j < cpt+r+1; ++j){
@@ -146,17 +146,23 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 			uint64_t i(0);
 			// FOREACH KMER
 			for (; i + k < ref.size(); ++i) {
-				kmer_vect = str2vect(ref.substr(i,k), k);
+				curr_kmer = canonize(ref.substr(i, k));
+				kmer_vect = str2vect(curr_kmer, k);
+				if (diff_kmer_seen.find(curr_kmer) == diff_kmer_seen.end()) {
+					diff_kmer_seen.insert(curr_kmer);
+				}
 				nb_kmer_seen++;
 				res = (kmer_vect * parity_m).unaryExpr([](int x){return (double)(x%2);});
 				if(res == hamming){
 					//STORE K-MER & INCREMENTE COMPTEUR
 					//cout << "mot de hamming" << endl;
 					sketch[ref.substr(i,k)]++;
-					if(sketch[vect2strv(kmer_vect)] == 1){
+					if(sketch[curr_kmer] == 1){
 						nb_hamming++;
 					}
-					nb_kmer_saved++;
+					if (nb_kmer_saved.find(curr_kmer) == nb_kmer_saved.end()) {
+						nb_kmer_saved.insert(curr_kmer);
+					}
 				}else{
 					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
 					uint64_t pos = findInMat(res);
@@ -165,37 +171,33 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 						// STORE K-MER & INCREMENTE COMPTEUR
 						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
 						sketch[vect2strv(kmer_vect)]++;
-						nb_kmer_saved++;
+						if (nb_kmer_saved.find(curr_kmer) == nb_kmer_saved.end()) {
+							nb_kmer_saved.insert(curr_kmer);
+						}
+						nb_1_error++;
 						if(sketch[vect2strv(kmer_vect)] == 1){
 							nb_hamming++;
 						}				
 					}
 					else{
-						//cout << "not found" << endl;
 						// CHECK SI 2 ERREURS
-						// SI 2 ERREURS
-							// POUR CHECK 
-							// SWITCH LES BITS
-							// STORE K-MER & INCREMENTE COMPTEUR
-						// SINON SKIP
 						std::vector<int> result;
                         for (uint64_t l = 0; l < res.size(); ++l){
                             int vect = res(l);
-                            //cout << vect;
                             result.push_back(vect);
                         }
-                        //cout << endl;
                         if (combinations.find(result) != combinations.end()){
+							nb_2_error++;
                             pair<uint64_t, uint64_t> pos = combinations[result];
                             kmer_vect(pos.first) = (double)(((int)kmer_vect(pos.first)+1)%2);
                             kmer_vect(pos.second) = (double)(((int)kmer_vect(pos.second)+1)%2);
                             sketch[vect2strv(kmer_vect)]++;
-                            nb_kmer_saved++;
+                            if (nb_kmer_saved.find(curr_kmer) == nb_kmer_saved.end()) {
+  								nb_kmer_saved.insert(curr_kmer);
+							}
                             if(sketch[vect2strv(kmer_vect)] == 1){
                                 nb_hamming++;
                             }
-                            //cout << pos.first << " " << pos.second << endl;
-                            //cin.get();
                         }
 					}
 				}
@@ -250,11 +252,12 @@ char ch, *file_type = new char('A');
 			Hammer h = Hammer(r);
 			h.parse_fasta(input, output, file_type);
 			if(verbose){
-				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers and I saved " << intToString(h.nb_kmer_saved) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
-				cout << "This means " << (double)h.nb_kmer_saved/h.nb_hamming << " k-mer per Hamming words in average" << endl;
-				cout << "This means a subsampling rate of " << (double)h.nb_kmer_seen/h.nb_kmer_saved << " Or " << (double)h.nb_kmer_seen/h.nb_hamming << " k-mers per hamming word." << endl;
+				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers, among which " << intToString(h.diff_kmer_seen.size()) << " unique k-mers and I saved " << intToString(h.nb_kmer_saved.size()) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
+                cout << "This means " << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mer per Hamming words in average" << endl;
+                cout << "This means a subsampling rate of " << (double)h.diff_kmer_seen.size()/h.nb_kmer_saved.size() << " Or " << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mers per hamming word." << endl;
 				cout << "Output file is " << intToString(std::filesystem::file_size(h.hammed_file)/1000) << "KB" << endl;
 				cout << "Input file is " << intToString(std::filesystem::file_size(input)/1000) << "KB" << endl;
+				cout << "There are " << intToString(h.nb_1_error) << " k-mers at 1 error distance from their Hamming word and " << intToString(h.nb_2_error) << " k-mers at 2 error distance." << endl;
             }
 		}
         

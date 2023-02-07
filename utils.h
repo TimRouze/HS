@@ -25,8 +25,8 @@
 using namespace std;
 using Eigen::RowVectorXd;
 
-uint64_t canonize(uint64_t x, uint64_t n);
-uint64_t rcbc(uint64_t in, uint64_t n);
+string canonize(string x);
+string rc(string x);
 void updateK(kmer & min, char nuc, uint64_t& k);
 kmer nuc2int(char c);
 kmer nuc2intrc(char c);

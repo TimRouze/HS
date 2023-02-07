@@ -21,18 +21,22 @@
 using namespace std;
 using namespace Eigen;
 
+
 class Hammer {
   public:
   //CONSTANTS
-  	uint64_t k, r, cpt, nb_kmer_seen, nb_kmer_saved, nb_hamming;
+  	uint64_t k, r, cpt, nb_kmer_seen, nb_hamming, nb_1_error, nb_2_error;
     //VARIABLES
+    unordered_set<string> diff_kmer_seen;
+    unordered_set<string> nb_kmer_saved;
     string hammed_file;
     Eigen::MatrixXd parity_m;
     Hammer(uint64_t ir){
         r=ir;
         nb_kmer_seen = 0;
-        nb_kmer_saved = 0;
         nb_hamming = 0;
+        nb_1_error = 0;
+        nb_2_error = 0;
         uint64_t size = pow(2,r)-(r+1);
         k = pow(2, r)/2;
         Eigen::MatrixXd tmp(size, r+1);

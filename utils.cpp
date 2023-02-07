@@ -193,8 +193,30 @@ void updateK(kmer& min, char nuc, uint64_t& k) {
 	min &= ((kmer)1<<(2*k))-1;
 }
 
-uint64_t canonize(uint64_t x, uint64_t n) {
-	return min(x, rcbc(x, n));
+
+string rc(string x){
+	string res = "";
+	for(int i = 0; i < x.size(); ++i){
+		switch(x[i]){
+			case 'A':
+				res = "T" + res;
+				break;
+			case 'T':
+				res = "A" + res;
+				break;
+			case 'C':
+				res = "G" + res;
+				break;
+			case 'G':
+				res = "C" + res;
+				break;
+		}
+	}
+	return res;
+}
+
+string canonize(string x) {
+	return min(x, rc(x));
 }
 
 void Biogetline(zstr::ifstream* in,string& result,char type,uint K) {
