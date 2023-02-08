@@ -106,7 +106,7 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
     hammed_file=output_prefix +clean_input_file+".gz";
 	zstr::ofstream* out_file = (new zstr::ofstream(hammed_file,21,9));
 	string ref, useless, curr_kmer;
-	unordered_map<string,uint64_t> sketch;
+	unordered_map<uint64_t,uint64_t> sketch;
 	Eigen::RowVectorXd kmer_vect(k*2), res(r+1), hamming(r+1);
 	create_matrix();
 	map<vector<int>, pair<uint64_t, uint64_t>> combinations;
@@ -148,20 +148,20 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 			for (; i + k < ref.size(); ++i) {
 				curr_kmer = canonize(ref.substr(i, k));
 				kmer_vect = str2vect(curr_kmer, k);
-				if (diff_kmer_seen.find(curr_kmer) == diff_kmer_seen.end()) {
-					diff_kmer_seen.insert(curr_kmer);
-				}
+				// if (diff_kmer_seen.find(unrevhash(str2num(curr_kmer))) == diff_kmer_seen.end()) {
+				// 	diff_kmer_seen.insert(unrevhash(str2num(curr_kmer)));
+				// }
 				nb_kmer_seen++;
 				res = (kmer_vect * parity_m).unaryExpr([](int x){return (double)(x%2);});
 				if(res == hamming){
 					//STORE K-MER & INCREMENTE COMPTEUR
 					//cout << "mot de hamming" << endl;
-					sketch[ref.substr(i,k)]++;
-					if(sketch[curr_kmer] == 1){
+					sketch[unrevhash(str2num(curr_kmer))]++;
+					if(sketch[unrevhash(str2num(curr_kmer))] == 1){
 						nb_hamming++;
 					}
-					if (nb_kmer_saved.find(curr_kmer) == nb_kmer_saved.end()) {
-						nb_kmer_saved.insert(curr_kmer);
+					if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
+						nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
 					}
 				}else{
 					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
@@ -170,12 +170,12 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 						// SWITCH LE BIT A LA POS DE L'ERREUR
 						// STORE K-MER & INCREMENTE COMPTEUR
 						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
-						sketch[vect2strv(kmer_vect)]++;
-						if (nb_kmer_saved.find(curr_kmer) == nb_kmer_saved.end()) {
-							nb_kmer_saved.insert(curr_kmer);
+						sketch[unrevhash(str2num(vect2strv(kmer_vect)))]++;
+						if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
+							nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
 						}
 						nb_1_error++;
-						if(sketch[vect2strv(kmer_vect)] == 1){
+						if(sketch[unrevhash(str2num(vect2strv(kmer_vect)))] == 1){
 							nb_hamming++;
 						}				
 					}
@@ -191,11 +191,11 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
                             pair<uint64_t, uint64_t> pos = combinations[result];
                             kmer_vect(pos.first) = (double)(((int)kmer_vect(pos.first)+1)%2);
                             kmer_vect(pos.second) = (double)(((int)kmer_vect(pos.second)+1)%2);
-                            sketch[vect2strv(kmer_vect)]++;
-                            if (nb_kmer_saved.find(curr_kmer) == nb_kmer_saved.end()) {
-  								nb_kmer_saved.insert(curr_kmer);
+                            sketch[unrevhash(str2num(vect2strv(kmer_vect)))]++;
+                            if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
+  								nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
 							}
-                            if(sketch[vect2strv(kmer_vect)] == 1){
+                            if(sketch[unrevhash(str2num(vect2strv(kmer_vect)))] == 1){
                                 nb_hamming++;
                             }
                         }
@@ -209,7 +209,7 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 	for(auto const& [h_word, nb]: sketch){
 		line_1 = ">" + intToString(nb) + "\n";
 		out_file->write(line_1.c_str(), line_1.size());
-		out_file->write(h_word.c_str(), h_word.size());
+		out_file->write(to_string(h_word).c_str(), to_string(h_word).size());
 		out_file->write("\n", 1);
 	}
 	delete input_stream;
@@ -252,9 +252,9 @@ char ch, *file_type = new char('A');
 			Hammer h = Hammer(r);
 			h.parse_fasta(input, output, file_type);
 			if(verbose){
-				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers, among which " << intToString(h.diff_kmer_seen.size()) << " unique k-mers and I saved " << intToString(h.nb_kmer_saved.size()) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
+				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers"/*, among which " << intToString(h.diff_kmer_seen.size()) << " unique k-mers*/" and I saved " << intToString(h.nb_kmer_saved.size()) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
                 cout << "This means " << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mer per Hamming words in average" << endl;
-                cout << "This means a subsampling rate of " << (double)h.diff_kmer_seen.size()/h.nb_kmer_saved.size() << " Or " << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mers per hamming word." << endl;
+                cout << "This means a subsampling rate of " /*<< (double)h.diff_kmer_seen.size()/h.nb_kmer_saved.size() << " Or "*/ << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mers per hamming word." << endl;
 				cout << "Output file is " << intToString(std::filesystem::file_size(h.hammed_file)/1000) << "KB" << endl;
 				cout << "Input file is " << intToString(std::filesystem::file_size(input)/1000) << "KB" << endl;
 				cout << "There are " << intToString(h.nb_1_error) << " k-mers at 1 error distance from their Hamming word and " << intToString(h.nb_2_error) << " k-mers at 2 error distance." << endl;

@@ -27,8 +27,8 @@ class Hammer {
   //CONSTANTS
   	uint64_t k, r, cpt, nb_kmer_seen, nb_hamming, nb_1_error, nb_2_error;
     //VARIABLES
-    unordered_set<string> diff_kmer_seen;
-    unordered_set<string> nb_kmer_saved;
+    // unordered_set<string> diff_kmer_seen;
+    unordered_set<uint64_t> nb_kmer_saved;
     string hammed_file;
     Eigen::MatrixXd parity_m;
     Hammer(uint64_t ir){
