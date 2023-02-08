@@ -160,9 +160,9 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 					if(sketch[unrevhash(str2num(curr_kmer))] == 1){
 						nb_hamming++;
 					}
-					if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
-						nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
-					}
+					// if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
+					// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
+					// }
 				}else{
 					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
 					uint64_t pos = findInMat(res);
@@ -171,9 +171,9 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 						// STORE K-MER & INCREMENTE COMPTEUR
 						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
 						sketch[unrevhash(str2num(vect2strv(kmer_vect)))]++;
-						if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
-							nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
-						}
+						// if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
+						// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
+						// }
 						nb_1_error++;
 						if(sketch[unrevhash(str2num(vect2strv(kmer_vect)))] == 1){
 							nb_hamming++;
@@ -192,9 +192,9 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
                             kmer_vect(pos.first) = (double)(((int)kmer_vect(pos.first)+1)%2);
                             kmer_vect(pos.second) = (double)(((int)kmer_vect(pos.second)+1)%2);
                             sketch[unrevhash(str2num(vect2strv(kmer_vect)))]++;
-                            if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
-  								nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
-							}
+                            // if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
+  							// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
+							// }
                             if(sketch[unrevhash(str2num(vect2strv(kmer_vect)))] == 1){
                                 nb_hamming++;
                             }
@@ -252,9 +252,9 @@ char ch, *file_type = new char('A');
 			Hammer h = Hammer(r);
 			h.parse_fasta(input, output, file_type);
 			if(verbose){
-				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers"/*, among which " << intToString(h.diff_kmer_seen.size()) << " unique k-mers*/" and I saved " << intToString(h.nb_kmer_saved.size()) << " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
-                cout << "This means " << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mer per Hamming words in average" << endl;
-                cout << "This means a subsampling rate of " /*<< (double)h.diff_kmer_seen.size()/h.nb_kmer_saved.size() << " Or "*/ << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mers per hamming word." << endl;
+				cout << "I have seen " << intToString(h.nb_kmer_seen) << " k-mers"/*, among which " << intToString(h.diff_kmer_seen.size()) << " unique k-mers and I saved " << intToString(h.nb_kmer_saved.size()) <<*/ " under " << intToString(h.nb_hamming) << " Hamming words." << endl;
+                // cout << "This means " << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mer per Hamming words in average" << endl;
+                // cout << "This means a subsampling rate of " /*<< (double)h.diff_kmer_seen.size()/h.nb_kmer_saved.size() << " Or "*/ << (double)h.nb_kmer_saved.size()/h.nb_hamming << " k-mers per hamming word." << endl;
 				cout << "Output file is " << intToString(std::filesystem::file_size(h.hammed_file)/1000) << "KB" << endl;
 				cout << "Input file is " << intToString(std::filesystem::file_size(input)/1000) << "KB" << endl;
 				cout << "There are " << intToString(h.nb_1_error) << " k-mers at 1 error distance from their Hamming word and " << intToString(h.nb_2_error) << " k-mers at 2 error distance." << endl;
