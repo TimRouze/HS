@@ -111,6 +111,7 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 	create_matrix();
 	// cout << parity_m << endl;
 	map<vector<int>, pair<uint64_t, uint64_t>> combinations;
+	// map<string, set<pair<char, char>>> unique_kmer_per_HW;
 	// int po = 0;
 	for (uint64_t i = 0; i < cpt+r ; ++i){
 		for (uint64_t j = i+1; j < cpt+r+1; ++j){
@@ -149,24 +150,21 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 			for (; i + k < ref.size(); ++i) {
 				curr_kmer = canonize(ref.substr(i, k));
 				kmer_vect = str2vect(curr_kmer, k);
-				// if (diff_kmer_seen.find(unrevhash(str2num(curr_kmer))) == diff_kmer_seen.end()) {
-				// 	diff_kmer_seen.insert(unrevhash(str2num(curr_kmer)));
-				// }
 				nb_kmer_seen++;
 				res = (kmer_vect * parity_m).unaryExpr([](int x){return (double)(x%2);});
 				if(res == hamming){
 					//STORE K-MER & INCREMENTE COMPTEUR
-					//cout << "mot de hamming" << endl;
-					
+					// cout << "mot de hamming" << endl;
 					if (sketch.find(curr_kmer) == sketch.end()) {
 						sketch[curr_kmer] = 1;
 						nb_hamming++;
-					}else{
+					}else{	
 						sketch[curr_kmer]++;
 					}
-					// if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
-					// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
-					// }
+					// pair<char, char> positions;
+					// positions.first = -1;
+					// positions.second = -1;
+					// unique_kmer_per_HW[curr_kmer].insert(positions);
 				}else{
 					// FINDINMAT RETOURNE LA POS DANS LA MATRICE OU RENVOIE -1 SINON
 					uint64_t pos = findInMat(res);
@@ -174,15 +172,17 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 						// SWITCH LE BIT A LA POS DE L'ERREUR
 						// STORE K-MER & INCREMENTE COMPTEUR
 						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
-						// if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
-						// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
-						// }
 						nb_1_error++;
-						if (sketch.find(curr_kmer) == sketch.end()) {
-							sketch[curr_kmer] = 1;
+						string k_mer = vect2strv(kmer_vect);
+						// pair<char, char> positions;
+						// positions.first = pos;
+						// positions.second = -1;
+						// unique_kmer_per_HW[curr_kmer].insert(positions);
+						if (sketch.find(k_mer) == sketch.end()) {
+							sketch[k_mer] = 1;
 							nb_hamming++;
 						}else{
-							sketch[curr_kmer]++;
+							sketch[k_mer]++;
 						}			
 					}
 					else{
@@ -197,14 +197,16 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
                             pair<uint64_t, uint64_t> pos = combinations[result];
                             kmer_vect(pos.first) = (double)(((int)kmer_vect(pos.first)+1)%2);
                             kmer_vect(pos.second) = (double)(((int)kmer_vect(pos.second)+1)%2);
+							string k_mer = vect2strv(kmer_vect);
+							// unique_kmer_per_HW[curr_kmer].insert(pos);
                             // if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
   							// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
 							// }
-                            if (sketch.find(curr_kmer) == sketch.end()) {
-								sketch[curr_kmer] = 1;
+                            if (sketch.find(k_mer) == sketch.end()) {
+								sketch[k_mer] = 1;
 								nb_hamming++;
 							}else{
-								sketch[curr_kmer]++;
+								sketch[k_mer]++;
 							}
                         }
 					}
@@ -216,12 +218,24 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 	cout << "I have seen " << intToString(read_kmer) << endl;
 	cout << "nb hamming word??? " << intToString(sketch.size()) << endl;
 	string line_1 = "";
+	// map<string, pair<uint64_t, uint64_t>>tmp_res;
+	// pair<uint64_t, uint64_t> tmp_pair;
+	// for(auto const& [h_word, pos] : unique_kmer_per_HW){
+	// 	tmp_pair.first = pos.size();
+	// 	tmp_res[h_word] = tmp_pair;
+	// }
 	for(auto const& [h_word, nb]: sketch){
 		line_1 = ">" + intToString(nb) + "\n";
 		out_file->write(line_1.c_str(), line_1.size());
 		out_file->write(h_word.c_str(), h_word.size());
 		out_file->write("\n", 1);
 	}
+	// for(auto const& [h_word, paire]: tmp_res){
+	// 	line_1 = ">" + intToString(paire.second) + " | " = intToString(paire.first) + "\n";
+	// 	out_file->write(line_1.c_str(), line_1.size());
+	// 	out_file->write(h_word.c_str(), h_word.size());
+	// 	out_file->write("\n", 1);
+	// }
 	delete input_stream;
 	delete out_file;
 }
