@@ -106,9 +106,10 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
     hammed_file=output_prefix +clean_input_file+".gz";
 	zstr::ofstream* out_file = (new zstr::ofstream(hammed_file,21,9));
 	string ref, useless, curr_kmer;
-	unordered_map<uint64_t,uint64_t> sketch;
+	unordered_map<string,uint64_t> sketch;
 	Eigen::RowVectorXd kmer_vect(k*2), res(r+1), hamming(r+1);
 	create_matrix();
+	// cout << parity_m << endl;
 	map<vector<int>, pair<uint64_t, uint64_t>> combinations;
 	// int po = 0;
 	for (uint64_t i = 0; i < cpt+r ; ++i){
@@ -156,9 +157,12 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 				if(res == hamming){
 					//STORE K-MER & INCREMENTE COMPTEUR
 					//cout << "mot de hamming" << endl;
-					sketch[unrevhash(str2num(curr_kmer))]++;
-					if(sketch[unrevhash(str2num(curr_kmer))] == 1){
+					
+					if (sketch.find(curr_kmer) == sketch.end()) {
+						sketch[curr_kmer] = 1;
 						nb_hamming++;
+					}else{
+						sketch[curr_kmer]++;
 					}
 					// if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
 					// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
@@ -170,14 +174,16 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 						// SWITCH LE BIT A LA POS DE L'ERREUR
 						// STORE K-MER & INCREMENTE COMPTEUR
 						kmer_vect(pos) = (double)(((int)kmer_vect(pos)+1)%2);
-						sketch[unrevhash(str2num(vect2strv(kmer_vect)))]++;
 						// if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
 						// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
 						// }
 						nb_1_error++;
-						if(sketch[unrevhash(str2num(vect2strv(kmer_vect)))] == 1){
+						if (sketch.find(curr_kmer) == sketch.end()) {
+							sketch[curr_kmer] = 1;
 							nb_hamming++;
-						}				
+						}else{
+							sketch[curr_kmer]++;
+						}			
 					}
 					else{
 						// CHECK SI 2 ERREURS
@@ -191,13 +197,15 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
                             pair<uint64_t, uint64_t> pos = combinations[result];
                             kmer_vect(pos.first) = (double)(((int)kmer_vect(pos.first)+1)%2);
                             kmer_vect(pos.second) = (double)(((int)kmer_vect(pos.second)+1)%2);
-                            sketch[unrevhash(str2num(vect2strv(kmer_vect)))]++;
                             // if (nb_kmer_saved.find(unrevhash(str2num(curr_kmer))) == nb_kmer_saved.end()) {
   							// 	nb_kmer_saved.insert(unrevhash(str2num(curr_kmer)));
 							// }
-                            if(sketch[unrevhash(str2num(vect2strv(kmer_vect)))] == 1){
-                                nb_hamming++;
-                            }
+                            if (sketch.find(curr_kmer) == sketch.end()) {
+								sketch[curr_kmer] = 1;
+								nb_hamming++;
+							}else{
+								sketch[curr_kmer]++;
+							}
                         }
 					}
 				}
@@ -205,11 +213,13 @@ void Hammer::parse_fasta(const string& input_file, const string& output_prefix, 
 		}
 	}
 	cout << "Writing output..." << endl;
+	cout << "I have seen " << intToString(read_kmer) << endl;
+	cout << "nb hamming word??? " << intToString(sketch.size()) << endl;
 	string line_1 = "";
 	for(auto const& [h_word, nb]: sketch){
 		line_1 = ">" + intToString(nb) + "\n";
 		out_file->write(line_1.c_str(), line_1.size());
-		out_file->write(to_string(h_word).c_str(), to_string(h_word).size());
+		out_file->write(h_word.c_str(), h_word.size());
 		out_file->write("\n", 1);
 	}
 	delete input_stream;
